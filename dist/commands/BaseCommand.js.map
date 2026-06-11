@@ -1,0 +1,1 @@
+{"version":3,"file":"BaseCommand.js","sourceRoot":"","sources":["../../src/commands/BaseCommand.ts"],"names":[],"mappings":"AAGA,MAAM,OAAgB,WAAW;IACZ,SAAS,CAAe;IAE3C,YAAY,QAAsB;QAChC,IAAI,CAAC,SAAS,GAAG,QAAQ,CAAC;IAC5B,CAAC;CAKF"}

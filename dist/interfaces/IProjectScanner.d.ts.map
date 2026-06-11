@@ -1,0 +1,1 @@
+{"version":3,"file":"IProjectScanner.d.ts","sourceRoot":"","sources":["../../src/interfaces/IProjectScanner.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,UAAU,EAAE,MAAM,uBAAuB,CAAC;AAEnD,MAAM,WAAW,eAAe;IAC9B,aAAa,CAAC,GAAG,EAAE,MAAM,GAAG,OAAO,CAAC,UAAU,EAAE,CAAC,CAAC;IAClD,eAAe,CAAC,IAAI,EAAE,MAAM,EAAE,GAAG,OAAO,CAAC,UAAU,EAAE,CAAC,CAAC;CACxD"}

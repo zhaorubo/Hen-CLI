@@ -1,0 +1,30 @@
+{
+  "name": "hen",
+  "version": "1.0.0",
+  "description": "Hen - CLI 管理工具",
+  "main": "dist/index.js",
+  "bin": {
+    "hen": "./bin/hen.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node --no-warnings dist/index.js",
+    "hen": "tsx --no-warnings src/index.ts"
+  },
+  "keywords": ["cli", "manager", "tool"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "@clack/prompts": "^0.8.2",
+    "simple-git": "^3.27.0",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2"
+  }
+}
