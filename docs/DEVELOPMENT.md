@@ -151,9 +151,491 @@ export function dispose(): void {
 
 ---
 
-## 4. 编码规范
+## 4. 面向对象设计原则
 
-### 4.1 TypeScript 配置要求
+> 本项目严格遵循面向对象编程思想，所有代码设计必须以 **可维护性、可读性、可扩展性** 为核心目标。
+
+### 4.1 SOLID 原则
+
+#### 4.1.1 单一职责原则 (SRP - Single Responsibility Principle)
+
+**每个类只负责一个功能领域，并且完全封装该功能。**
+
+```typescript
+// ✅ 正确 - 每个类职责单一
+export class ConfigManager {
+  // 只负责配置的读取、保存和管理
+}
+
+export class CliRegistry {
+  // 只负责 CLI 项目的注册、查询和生命周期管理
+}
+
+export class ModuleLoader {
+  // 只负责动态模块的加载、卸载和重载
+}
+
+// ❌ 错误 - 一个类承担过多职责
+export class HenManager {
+  // 同时负责配置、注册、加载、Git 操作...
+  // 违反 SRP，难以维护和测试
+}
+```
+
+**判断标准**：如果一个类超过 200 行，或者可以用 "和" 来描述它的职责（如 "负责配置管理和 Git 安装"），则可能违反了 SRP。
+
+#### 4.1.2 开闭原则 (OCP - Open Closed Principle)
+
+**对扩展开放，对修改封闭。新功能通过扩展现有代码实现，而非修改已有代码。**
+
+```typescript
+// ✅ 正确 - 通过继承扩展功能
+export abstract class BaseCommand {
+  abstract createCommand(): Command;
+}
+
+// 添加新功能时创建新类，不修改 BaseCommand
+export class MyNewCommand extends BaseCommand {
+  createCommand(): Command { /* ... */ }
+}
+
+// ❌ 错误 - 通过修改已有类添加功能
+export class CommandFactory {
+  static create(type: string) {
+    if (type === 'add') return new AddCommand();
+    if (type === 'remove') return new RemoveCommand();
+    if (type === 'new') return new NewCommand(); // 每次添加新功能都要修改这里
+  }
+}
+```
+
+#### 4.1.3 里氏替换原则 (LSP - Liskov Substitution Principle)
+
+**子类必须能够替换其父类而不影响程序的正确性。**
+
+```typescript
+// ✅ 正确 - 子类完全遵循父类的契约
+export abstract class BaseCommand {
+  abstract createCommand(): Command;
+}
+
+export class AddCommand extends BaseCommand {
+  // 返回的 Command 对象完全符合父类契约
+  createCommand(): Command {
+    return new Command('add').action(async () => { /* ... */ });
+  }
+}
+
+// ❌ 错误 - 子类改变了父类的行为约定
+class BadCommand extends BaseCommand {
+  createCommand(): Command {
+    // 返回了不符合预期的对象，或抛出了未声明的异常
+    throw new Error('Not implemented');
+  }
+}
+```
+
+#### 4.1.4 接口隔离原则 (ISP - Interface Segregation Principle)
+
+**使用多个专门的接口，而非一个臃肿的通用接口。**
+
+```typescript
+// ✅ 正确 - 接口职责明确且精简
+export interface IProjectScanner {
+  scanDirectory(dir: string): Promise<CliProject[]>;
+  scanDirectories(dirs: string[]): Promise<CliProject[]>;
+}
+
+export interface IModuleLoader {
+  load(project: CliProject): Promise<ICliModule>;
+  unload(key: string): Promise<void>;
+  reload(project: CliProject): Promise<ICliModule>;
+}
+
+// ❌ 错误 - 一个接口包含过多不相关的职责
+export interface IHenService {
+  scanDirectory(): void;
+  loadModule(): void;
+  installGit(): void;
+  chatWithAI(): void;
+  saveConfig(): void;
+  // ... 几十个不相关的方法
+}
+```
+
+#### 4.1.5 依赖倒置原则 (DIP - Dependency Inversion Principle)
+
+**高层模块不应依赖低层模块，两者都应依赖抽象。抽象不应依赖细节，细节应依赖抽象。**
+
+```typescript
+// ✅ 正确 - 依赖接口（抽象）
+export class CliRegistry {
+  constructor(
+    private readonly _scanner: IProjectScanner,  // 依赖抽象
+    private readonly _loader: IModuleLoader       // 依赖抽象
+  ) {}
+}
+
+// ✅ 具体实现也实现接口
+export class ProjectScanner implements IProjectScanner { /* ... */ }
+
+// ❌ 错误 - 直接依赖具体实现
+export class CliRegistry {
+  constructor(
+    private readonly _scanner: ProjectScanner,  // 依赖具体类，无法替换
+    private readonly _loader: ModuleLoader
+  ) {}
+}
+```
+
+### 4.2 设计模式应用
+
+#### 4.2.1 工厂模式 (Factory Pattern)
+
+**用于创建对象，将对象创建与使用分离。**
+
+```typescript
+// 命令工厂 - 集中管理所有命令的创建
+export class CommandFactory {
+  static createAllCommands(
+    registry: ICliRegistry,
+    scanner: ProjectScanner,
+    loader: ModuleLoader,
+    configManager: ConfigManager,
+    gitInstaller: GitInstaller,
+    aiService: OpenAIService,
+  ): BaseCommand[] {
+    return [
+      new AddCommand(registry, scanner, gitInstaller),
+      new RemoveCommand(registry),
+      new ListCommand(registry),
+      new ReloadCommand(registry),
+      new AiCommand(registry, aiService, configManager),
+    ];
+  }
+}
+```
+
+#### 4.2.2 策略模式 (Strategy Pattern)
+
+**定义一系列算法，使它们可以相互替换。**
+
+本项目中，不同的 CLI 模块通过统一的 `ICliModule` 接口注册，实现策略模式：
+
+```typescript
+// 所有 CLI 模块遵循同一接口，可以互相替换
+for (const project of registry.getAll()) {
+  const module = project.module;
+  if (module) {
+    module.register(program);  // 任何实现 ICliModule 的对象都可以被调用
+  }
+}
+```
+
+#### 4.2.3 观察者模式 (Observer Pattern)
+
+**通过事件机制实现对象间的一对多依赖。**
+
+```typescript
+// Spinner 通过回调实现观察者模式
+const spinner = clack.spinner();
+spinner.start('处理中...');
+spinner.message('继续处理...');  // 通知所有观察者状态变化
+spinner.stop('完成');
+```
+
+### 4.3 面向对象设计最佳实践
+
+#### 4.3.1 封装性
+
+- **字段私有化**：所有内部状态使用 `private` 修饰符
+- **通过 getter 暴露只读属性**：防止外部修改内部状态
+- **通过方法控制状态变更**：所有状态变更必须通过明确定义的方法
+
+```typescript
+export class CliProject {
+  private readonly _key: string;     // 不可变，外部只读
+  private readonly _name: string;
+  private _module?: ICliModule;      // 可变，通过受控方法修改
+
+  get key(): string { return this._key; }
+  get name(): string { return this._name; }
+  get module(): ICliModule | undefined { return this._module; }
+
+  // 受控的状态变更方法
+  setModule(module: ICliModule): void {
+    this._module = module;
+  }
+
+  clearModule(): void {
+    this._module = undefined;
+  }
+}
+```
+
+#### 4.3.2 组合优于继承
+
+- **优先使用组合**来扩展功能，而非深层继承
+- **继承适用于 is-a 关系，组合适用于 has-a 关系**
+
+```typescript
+// ✅ 正确 - 组合模式
+export class CliRegistry {
+  private readonly _scanner: IProjectScanner;  // 组合
+  private readonly _loader: IModuleLoader;     // 组合
+
+  async add(project: CliProject): Promise<boolean> {
+    await this._loader.load(project);  // 委托给组合的对象
+    // ...
+  }
+}
+
+// ❌ 错误 - 过深的继承链
+class AdvancedGitCliManager extends GitManager extends BaseManager extends Manager {
+  // 继承链过深，难以理解和修改
+}
+```
+
+#### 4.3.3 依赖注入
+
+- **通过构造函数注入依赖**，而非在类内部创建
+- **便于测试**：可以轻松替换 mock 对象
+- **提高解耦**：类不关心依赖的具体实现
+
+```typescript
+// ✅ 正确 - 构造函数依赖注入
+export class AiCommand extends BaseCommand {
+  private readonly _aiService: IAIService;
+  private readonly _configManager: ConfigManager;
+
+  constructor(
+    registry: ICliRegistry,
+    aiService: IAIService,
+    configManager: ConfigManager
+  ) {
+    super(registry);
+    this._aiService = aiService;
+    this._configManager = configManager;
+  }
+}
+
+// ❌ 错误 - 内部创建依赖
+export class AiCommand extends BaseCommand {
+  private _aiService: IAIService;
+
+  constructor(registry: ICliRegistry) {
+    super(registry);
+    this._aiService = new OpenAIService();  // 硬编码依赖，无法替换
+  }
+}
+```
+
+### 4.4 代码可维护性规范
+
+#### 4.4.1 方法长度限制
+
+- 单个方法不超过 **30 行**
+- 超过限制时提取私有方法
+
+```typescript
+// ✅ 正确 - 提取子方法
+private async addLocalProject(dirPath: string, globalLink: boolean): Promise<void> {
+  const spinner = clack.spinner();
+  spinner.start('扫描项目目录...');
+
+  const projects = await this._scanner.scanDirectory(dirPath);
+
+  if (projects.length === 0) {
+    this.handleEmptyProjects(spinner);
+    return;
+  }
+
+  const added = await this.registerProjects(projects, globalLink);
+  clack.outro(`成功添加 ${added} 个项目`);
+}
+
+private handleEmptyProjects(spinner: ReturnType<typeof clack.spinner>): void {
+  spinner.stop('未找到有效的 CLI 项目（缺少 index.ts）');
+  clack.outro('添加失败');
+}
+
+private async registerProjects(projects: CliProject[], globalLink: boolean): Promise<number> {
+  let added = 0;
+  for (const project of projects) {
+    const success = await this._registry.add(project);
+    if (success) {
+      clack.log.success(`已添加: ${project.name} (${project.key})`);
+      added++;
+    }
+  }
+  return added;
+}
+```
+
+#### 4.4.2 早期返回 (Early Return)
+
+**减少嵌套，提高可读性。**
+
+```typescript
+// ✅ 正确 - 早期返回，平坦结构
+async handleRemove(key?: string): Promise<void> {
+  if (!key) {
+    key = await this.selectProject();
+    if (!key) return;
+  }
+
+  const project = this._registry.get(key);
+  if (!project) {
+    clack.log.error(`项目 "${key}" 不存在`);
+    return;
+  }
+
+  const confirmed = await this.confirmDeletion(project);
+  if (!confirmed) return;
+
+  await this.performRemoval(project);
+}
+
+// ❌ 错误 - 深层嵌套
+async handleRemove(key?: string): Promise<void> {
+  if (key) {
+    const project = this._registry.get(key);
+    if (project) {
+      const confirmed = await this.confirmDeletion(project);
+      if (confirmed) {
+        await this.performRemoval(project);
+      }
+    } else {
+      clack.log.error(`项目 "${key}" 不存在`);
+    }
+  } else {
+    // ...
+  }
+}
+```
+
+#### 4.4.3 单一抽象层级
+
+**同一方法内的代码应处于相同的抽象层级。**
+
+```typescript
+// ✅ 正确 - 统一的抽象层级
+async add(project: CliProject): Promise<boolean> {
+  if (this._projects.has(project.key)) {
+    return false;
+  }
+
+  await this.loadModule(project);       // 高级抽象
+  await this.registerProject(project);   // 高级抽象
+  await this.persistChanges(project);    // 高级抽象
+
+  return true;
+}
+
+private async loadModule(project: CliProject): Promise<void> {
+  await this._loader.load(project);
+}
+
+private async registerProject(project: CliProject): Promise<void> {
+  this._projects.set(project.key, project);
+}
+
+private async persistChanges(project: CliProject): Promise<void> {
+  await this._configManager.addProject(project.serialize());
+}
+```
+
+### 4.5 代码可读性规范
+
+#### 4.5.1 命名即文档
+
+**变量名、方法名应当清楚表达其意图，不需要额外注释。**
+
+```typescript
+// ✅ 清晰命名
+async linkToGlobal(project: CliProject): Promise<void> {
+  await execAsync('npm link', { cwd: project.path });
+}
+
+async unlinkFromGlobal(project: CliProject): Promise<void> {
+  await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
+}
+
+// ❌ 模糊命名
+async global(project: CliProject): Promise<void> { }
+async removeGlobal(project: CliProject): Promise<void> { }
+```
+
+#### 4.5.2 注释说明 Why 而非 What
+
+```typescript
+// ✅ 正确 - 解释原因
+if (project.globalLink) {
+  try {
+    await this.linkToGlobal(project);
+  } catch {
+    // 全局链接失败不影响主流程，继续注册
+  }
+}
+
+// ❌ 错误 - 重复代码功能
+// 如果项目有全局链接标志，则调用 linkToGlobal
+if (project.globalLink) {
+  await this.linkToGlobal(project);
+}
+```
+
+### 4.6 代码可扩展性规范
+
+#### 4.6.1 面向接口编程
+
+**所有对外暴露的 API 应当基于接口，而非具体实现。**
+
+```typescript
+// ✅ 对外暴露接口
+export interface ICliRegistry {
+  add(project: CliProject): Promise<boolean>;
+  remove(key: string): Promise<boolean>;
+  // ...
+}
+
+// 使用者依赖接口
+export class AiCommand extends BaseCommand {
+  protected readonly _registry: ICliRegistry;  // 可以替换为任何实现
+}
+```
+
+#### 4.6.2 预留扩展点
+
+**设计时考虑未来可能的变化，预留扩展点。**
+
+```typescript
+// ✅ 使用 abstract class 提供钩子
+export abstract class BaseCommand {
+  protected readonly _registry: ICliRegistry;
+
+  constructor(registry: ICliRegistry) {
+    this._registry = registry;
+  }
+
+  // 子类可以覆盖这些钩子
+  protected async beforeExecute?(): Promise<void>;
+  protected async afterExecute?(): Promise<void>;
+
+  abstract createCommand(): Command;
+}
+
+// ✅ 接口提供扩展能力
+export interface ICliModule {
+  readonly meta: CliMetaInfo;
+  register(command: Command): void;
+  dispose?(): void;  // 可选的清理钩子
+}
+```
+
+### 4.7 编码规范（基础）
+
+### 4.7.1 TypeScript 配置要求
 
 ```json
 {
