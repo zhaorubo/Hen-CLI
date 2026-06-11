@@ -10,6 +10,7 @@ export class CliProject {
   private readonly _version?: string;
   private readonly _description?: string;
   private readonly _gitUrl?: string;
+  private readonly _globalLink: boolean;
   private _module?: ICliModule;
 
   constructor(
@@ -19,7 +20,8 @@ export class CliProject {
     source: ProjectSource,
     version?: string,
     description?: string,
-    gitUrl?: string
+    gitUrl?: string,
+    globalLink: boolean = false
   ) {
     this._key = key;
     this._name = name;
@@ -28,6 +30,7 @@ export class CliProject {
     this._version = version;
     this._description = description;
     this._gitUrl = gitUrl;
+    this._globalLink = globalLink;
   }
 
   static fromSerialized(data: SerializedProject): CliProject {
@@ -38,7 +41,8 @@ export class CliProject {
       data.source,
       data.version,
       data.description,
-      data.gitUrl
+      data.gitUrl,
+      data.globalLink
     );
   }
 
@@ -68,6 +72,10 @@ export class CliProject {
 
   get gitUrl(): string | undefined {
     return this._gitUrl;
+  }
+
+  get globalLink(): boolean {
+    return this._globalLink;
   }
 
   get module(): ICliModule | undefined {
@@ -104,6 +112,7 @@ export class CliProject {
       description: this._description,
       source: this._source,
       gitUrl: this._gitUrl,
+      globalLink: this._globalLink || undefined,
     };
   }
 }

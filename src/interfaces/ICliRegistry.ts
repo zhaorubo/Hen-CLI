@@ -7,4 +7,6 @@ export interface ICliRegistry {
   getAll(): CliProject[];
   has(key: string): boolean;
   reload(key: string): Promise<boolean>;
+  linkToGlobal(project: CliProject): Promise<void>;
+  unlinkFromGlobal(project: CliProject): Promise<void>;
 }

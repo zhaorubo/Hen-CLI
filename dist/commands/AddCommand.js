@@ -20,17 +20,19 @@ export class AddCommand extends BaseCommand {
             .argument('[path]', '本地项目路径')
             .option('--git <url>', 'Git 仓库 URL')
             .option('--branch <branch>', 'Git 分支')
+            .option('-g, --global', '创建全局链接')
             .action(async (argPath, options) => {
             try {
                 const gitUrl = options.git;
+                const globalLink = options.global || false;
                 if (gitUrl) {
-                    await this.addGitProject(gitUrl, options.branch);
+                    await this.addGitProject(gitUrl, options.branch, globalLink);
                 }
                 else if (argPath) {
-                    await this.addLocalProject(argPath);
+                    await this.addLocalProject(argPath, globalLink);
                 }
                 else {
-                    await this.interactiveAdd();
+                    await this.interactiveAdd(globalLink);
                 }
             }
             catch (error) {
@@ -40,7 +42,7 @@ export class AddCommand extends BaseCommand {
         });
         return cmd;
     }
-    async interactiveAdd() {
+    async interactiveAdd(globalLink = false) {
         const choice = await clack.select({
             message: '选择添加方式:',
             options: [
@@ -61,7 +63,7 @@ export class AddCommand extends BaseCommand {
                 clack.outro('已取消');
                 return;
             }
-            await this.addLocalProject(dir);
+            await this.addLocalProject(dir, globalLink);
         }
         else {
             const url = await clack.text({
@@ -79,10 +81,10 @@ export class AddCommand extends BaseCommand {
                 clack.outro('已取消');
                 return;
             }
-            await this.addGitProject(url);
+            await this.addGitProject(url, undefined, globalLink);
         }
     }
-    async addLocalProject(dirPath) {
+    async addLocalProject(dirPath, globalLink = false) {
         const spinner = clack.spinner();
         spinner.start('扫描项目目录...');
         try {
@@ -95,9 +97,10 @@ export class AddCommand extends BaseCommand {
             spinner.stop('扫描完成');
             let added = 0;
             for (const project of projects) {
-                const success = await this._registry.add(project);
+                const cliProject = new CliProject(project.key, project.name, project.path, project.source, project.version, project.description, project.gitUrl, globalLink);
+                const success = await this._registry.add(cliProject);
                 if (success) {
-                    clack.log.success(`已添加: ${project.name} (${project.key})`);
+                    clack.log.success(`已添加: ${project.name} (${project.key})${globalLink ? ' [全局链接]' : ''}`);
                     added++;
                 }
                 else {
@@ -111,7 +114,7 @@ export class AddCommand extends BaseCommand {
             clack.outro(`错误: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-    async addGitProject(url, branch) {
+    async addGitProject(url, branch, globalLink = false) {
         const spinner = clack.spinner();
         spinner.start('验证仓库...');
         try {
@@ -128,9 +131,9 @@ export class AddCommand extends BaseCommand {
                 return;
             }
             for (const project of projects) {
-                const success = await this._registry.add(new CliProject(project.key, project.name, project.path, 'git', project.version, project.description, url));
+                const success = await this._registry.add(new CliProject(project.key, project.name, project.path, 'git', project.version, project.description, url, globalLink));
                 if (success) {
-                    clack.log.success(`已添加: ${project.name} (${project.key})`);
+                    clack.log.success(`已添加: ${project.name} (${project.key})${globalLink ? ' [全局链接]' : ''}`);
                 }
                 else {
                     clack.log.warn(`已存在: ${project.name} (${project.key})`);

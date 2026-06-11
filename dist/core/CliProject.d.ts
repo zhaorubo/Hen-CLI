@@ -8,8 +8,9 @@ export declare class CliProject {
     private readonly _version?;
     private readonly _description?;
     private readonly _gitUrl?;
+    private readonly _globalLink;
     private _module?;
-    constructor(key: string, name: string, projectPath: string, source: ProjectSource, version?: string, description?: string, gitUrl?: string);
+    constructor(key: string, name: string, projectPath: string, source: ProjectSource, version?: string, description?: string, gitUrl?: string, globalLink?: boolean);
     static fromSerialized(data: SerializedProject): CliProject;
     get key(): string;
     get name(): string;
@@ -18,6 +19,7 @@ export declare class CliProject {
     get version(): string | undefined;
     get description(): string | undefined;
     get gitUrl(): string | undefined;
+    get globalLink(): boolean;
     get module(): ICliModule | undefined;
     get entryPath(): string;
     get meta(): CliMetaInfo;

@@ -22,7 +22,8 @@ export class ListCommand extends BaseCommand {
                 clack.intro('Hen CLI - 项目列表');
                 const table = projects.map(p => {
                     const sourceTag = p.source === 'git' ? '🔗 Git' : '📁 本地';
-                    return `${sourceTag.padEnd(8)} ${p.key.padEnd(20)} ${p.name}${p.version ? ` v${p.version}` : ''}`;
+                    const globalTag = p.globalLink ? '🌐' : '';
+                    return `${sourceTag.padEnd(8)} ${globalTag.padEnd(3)} ${p.key.padEnd(20)} ${p.name}${p.version ? ` v${p.version}` : ''}`;
                 }).join('\n');
                 clack.note(table, `共 ${projects.length} 个项目`);
                 clack.outro('完成');

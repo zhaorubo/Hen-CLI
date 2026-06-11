@@ -3,6 +3,10 @@ import { ConfigManager } from './ConfigManager.js';
 import { IProjectScanner } from '../interfaces/IProjectScanner.js';
 import { IModuleLoader } from '../interfaces/IModuleLoader.js';
 import { ICliRegistry } from '../interfaces/ICliRegistry.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export class CliRegistry implements ICliRegistry {
   private readonly _configManager: ConfigManager;
@@ -64,6 +68,15 @@ export class CliRegistry implements ICliRegistry {
 
     this._projects.set(project.key, project);
     await this._configManager.addProject(project.serialize());
+
+    if (project.globalLink) {
+      try {
+        await this.linkToGlobal(project);
+      } catch {
+        // Global link may fail, continue anyway
+      }
+    }
+
     return true;
   }
 
@@ -103,5 +116,13 @@ export class CliRegistry implements ICliRegistry {
     } catch {
       return false;
     }
+  }
+
+  async linkToGlobal(project: CliProject): Promise<void> {
+    await execAsync('npm link', { cwd: project.path });
+  }
+
+  async unlinkFromGlobal(project: CliProject): Promise<void> {
+    await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
   }
 }

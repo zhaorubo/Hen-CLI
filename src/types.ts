@@ -19,6 +19,7 @@ export interface SerializedProject {
   description?: string;
   source: 'local' | 'git';
   gitUrl?: string;
+  globalLink?: boolean;
 }
 
 export type ProjectSource = 'local' | 'git';

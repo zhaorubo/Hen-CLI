@@ -55,6 +55,15 @@ export class RemoveCommand extends BaseCommand {
         }
         const spinner = clack.spinner();
         spinner.start('删除中...');
+        if (project.globalLink) {
+            spinner.message('解除全局链接...');
+            try {
+                await this._registry.unlinkFromGlobal(project);
+            }
+            catch {
+                // Unlink may fail, continue anyway
+            }
+        }
         const success = await this._registry.remove(key);
         spinner.stop();
         if (success) {

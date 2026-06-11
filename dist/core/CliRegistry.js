@@ -1,4 +1,7 @@
 import { CliProject } from './CliProject.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 export class CliRegistry {
     _configManager;
     _scanner;
@@ -51,6 +54,14 @@ export class CliRegistry {
         }
         this._projects.set(project.key, project);
         await this._configManager.addProject(project.serialize());
+        if (project.globalLink) {
+            try {
+                await this.linkToGlobal(project);
+            }
+            catch {
+                // Global link may fail, continue anyway
+            }
+        }
         return true;
     }
     async remove(key) {
@@ -84,6 +95,12 @@ export class CliRegistry {
         catch {
             return false;
         }
+    }
+    async linkToGlobal(project) {
+        await execAsync('npm link', { cwd: project.path });
+    }
+    async unlinkFromGlobal(project) {
+        await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
     }
 }
 //# sourceMappingURL=CliRegistry.js.map
