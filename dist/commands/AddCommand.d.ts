@@ -10,6 +10,7 @@ export declare class AddCommand extends BaseCommand {
     get description(): string;
     createCommand(): Command;
     private interactiveAdd;
+    private getGlobalLinkSuffix;
     private addLocalProject;
     private addGitProject;
 }

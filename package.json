@@ -13,18 +13,23 @@
     "start": "node --no-warnings dist/index.js",
     "hen": "tsx --no-warnings src/index.ts"
   },
-  "keywords": ["cli", "manager", "tool"],
+  "keywords": [
+    "cli",
+    "manager",
+    "tool"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "commander": "^12.1.0",
     "@clack/prompts": "^0.8.2",
-    "simple-git": "^3.27.0",
-    "openai": "^4.77.0"
+    "@xdooi/consoletable": "^1.0.3",
+    "commander": "^12.1.0",
+    "openai": "^4.77.0",
+    "simple-git": "^3.27.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.2",
     "@types/node": "^22.10.1",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }

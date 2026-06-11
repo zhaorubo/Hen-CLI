@@ -84,6 +84,15 @@ export class AddCommand extends BaseCommand {
             await this.addGitProject(url, undefined, globalLink);
         }
     }
+    getGlobalLinkSuffix(globalLink, globalLinkResult) {
+        if (!globalLink)
+            return '';
+        if (globalLinkResult === 'success')
+            return ' [全局链接成功]';
+        if (globalLinkResult === 'no-package-json')
+            return ' [警告: 项目无 package.json，未创建全局链接]';
+        return ' [警告: 全局链接失败]';
+    }
     async addLocalProject(dirPath, globalLink = false) {
         const spinner = clack.spinner();
         spinner.start('扫描项目目录...');
@@ -98,9 +107,10 @@ export class AddCommand extends BaseCommand {
             let added = 0;
             for (const project of projects) {
                 const cliProject = new CliProject(project.key, project.name, project.path, project.source, project.version, project.description, project.gitUrl, globalLink);
-                const success = await this._registry.add(cliProject);
-                if (success) {
-                    clack.log.success(`已添加: ${project.name} (${project.key})${globalLink ? ' [全局链接]' : ''}`);
+                const result = await this._registry.add(cliProject);
+                if (result.added) {
+                    const suffix = this.getGlobalLinkSuffix(globalLink, result.globalLinkResult);
+                    clack.log.success(`已添加: ${project.name} (${project.key})${suffix}`);
                     added++;
                 }
                 else {
@@ -131,9 +141,10 @@ export class AddCommand extends BaseCommand {
                 return;
             }
             for (const project of projects) {
-                const success = await this._registry.add(new CliProject(project.key, project.name, project.path, 'git', project.version, project.description, url, globalLink));
-                if (success) {
-                    clack.log.success(`已添加: ${project.name} (${project.key})${globalLink ? ' [全局链接]' : ''}`);
+                const result = await this._registry.add(new CliProject(project.key, project.name, project.path, 'git', project.version, project.description, url, globalLink));
+                if (result.added) {
+                    const suffix = this.getGlobalLinkSuffix(globalLink, result.globalLinkResult);
+                    clack.log.success(`已添加: ${project.name} (${project.key})${suffix}`);
                 }
                 else {
                     clack.log.warn(`已存在: ${project.name} (${project.key})`);

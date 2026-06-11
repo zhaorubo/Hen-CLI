@@ -5,6 +5,8 @@ import { IModuleLoader } from '../interfaces/IModuleLoader.js';
 import { ICliRegistry } from '../interfaces/ICliRegistry.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs/promises';
+import path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -55,9 +57,9 @@ export class CliRegistry implements ICliRegistry {
     }
   }
 
-  async add(project: CliProject): Promise<boolean> {
+  async add(project: CliProject): Promise<{ added: boolean; globalLinkResult?: 'success' | 'no-package-json' | 'failed' }> {
     if (this._projects.has(project.key)) {
-      return false;
+      return { added: false };
     }
 
     try {
@@ -69,15 +71,12 @@ export class CliRegistry implements ICliRegistry {
     this._projects.set(project.key, project);
     await this._configManager.addProject(project.serialize());
 
+    let globalLinkResult: 'success' | 'no-package-json' | 'failed' | undefined;
     if (project.globalLink) {
-      try {
-        await this.linkToGlobal(project);
-      } catch {
-        // Global link may fail, continue anyway
-      }
+      globalLinkResult = await this.linkToGlobal(project);
     }
 
-    return true;
+    return { added: true, globalLinkResult };
   }
 
   async remove(key: string): Promise<boolean> {
@@ -118,11 +117,35 @@ export class CliRegistry implements ICliRegistry {
     }
   }
 
-  async linkToGlobal(project: CliProject): Promise<void> {
-    await execAsync('npm link', { cwd: project.path });
+  async hasPackageJson(project: CliProject): Promise<boolean> {
+    try {
+      await fs.access(path.join(project.path, 'package.json'));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  async unlinkFromGlobal(project: CliProject): Promise<void> {
-    await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
+  async linkToGlobal(project: CliProject): Promise<'success' | 'no-package-json' | 'failed'> {
+    const hasPkgJson = await this.hasPackageJson(project);
+    if (!hasPkgJson) {
+      return 'no-package-json';
+    }
+
+    try {
+      await execAsync('npm link', { cwd: project.path });
+      return 'success';
+    } catch {
+      return 'failed';
+    }
+  }
+
+  async unlinkFromGlobal(project: CliProject): Promise<'success' | 'failed'> {
+    try {
+      await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
+      return 'success';
+    } catch {
+      return 'failed';
+    }
   }
 }

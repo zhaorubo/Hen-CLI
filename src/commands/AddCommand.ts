@@ -92,6 +92,13 @@ export class AddCommand extends BaseCommand {
     }
   }
 
+  private getGlobalLinkSuffix(globalLink: boolean, globalLinkResult?: 'success' | 'no-package-json' | 'failed'): string {
+    if (!globalLink) return '';
+    if (globalLinkResult === 'success') return ' [全局链接成功]';
+    if (globalLinkResult === 'no-package-json') return ' [警告: 项目无 package.json，未创建全局链接]';
+    return ' [警告: 全局链接失败]';
+  }
+
   private async addLocalProject(dirPath: string, globalLink: boolean = false): Promise<void> {
     const spinner = clack.spinner();
     spinner.start('扫描项目目录...');
@@ -119,9 +126,10 @@ export class AddCommand extends BaseCommand {
           project.gitUrl,
           globalLink
         );
-        const success = await this._registry.add(cliProject);
-        if (success) {
-          clack.log.success(`已添加: ${project.name} (${project.key})${globalLink ? ' [全局链接]' : ''}`);
+        const result = await this._registry.add(cliProject);
+        if (result.added) {
+          const suffix = this.getGlobalLinkSuffix(globalLink, result.globalLinkResult);
+          clack.log.success(`已添加: ${project.name} (${project.key})${suffix}`);
           added++;
         } else {
           clack.log.warn(`已存在: ${project.name} (${project.key})`);
@@ -156,7 +164,7 @@ export class AddCommand extends BaseCommand {
       }
 
       for (const project of projects) {
-        const success = await this._registry.add(new CliProject(
+        const result = await this._registry.add(new CliProject(
           project.key,
           project.name,
           project.path,
@@ -166,8 +174,9 @@ export class AddCommand extends BaseCommand {
           url,
           globalLink,
         ));
-        if (success) {
-          clack.log.success(`已添加: ${project.name} (${project.key})${globalLink ? ' [全局链接]' : ''}`);
+        if (result.added) {
+          const suffix = this.getGlobalLinkSuffix(globalLink, result.globalLinkResult);
+          clack.log.success(`已添加: ${project.name} (${project.key})${suffix}`);
         } else {
           clack.log.warn(`已存在: ${project.name} (${project.key})`);
         }

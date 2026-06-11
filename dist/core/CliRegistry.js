@@ -1,6 +1,8 @@
 import { CliProject } from './CliProject.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs/promises';
+import path from 'path';
 const execAsync = promisify(exec);
 export class CliRegistry {
     _configManager;
@@ -44,7 +46,7 @@ export class CliRegistry {
     }
     async add(project) {
         if (this._projects.has(project.key)) {
-            return false;
+            return { added: false };
         }
         try {
             await this._loader.load(project);
@@ -54,15 +56,11 @@ export class CliRegistry {
         }
         this._projects.set(project.key, project);
         await this._configManager.addProject(project.serialize());
+        let globalLinkResult;
         if (project.globalLink) {
-            try {
-                await this.linkToGlobal(project);
-            }
-            catch {
-                // Global link may fail, continue anyway
-            }
+            globalLinkResult = await this.linkToGlobal(project);
         }
-        return true;
+        return { added: true, globalLinkResult };
     }
     async remove(key) {
         const project = this._projects.get(key);
@@ -96,11 +94,36 @@ export class CliRegistry {
             return false;
         }
     }
+    async hasPackageJson(project) {
+        try {
+            await fs.access(path.join(project.path, 'package.json'));
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
     async linkToGlobal(project) {
-        await execAsync('npm link', { cwd: project.path });
+        const hasPkgJson = await this.hasPackageJson(project);
+        if (!hasPkgJson) {
+            return 'no-package-json';
+        }
+        try {
+            await execAsync('npm link', { cwd: project.path });
+            return 'success';
+        }
+        catch {
+            return 'failed';
+        }
     }
     async unlinkFromGlobal(project) {
-        await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
+        try {
+            await execAsync(`npm unlink -g ${project.name}`, { cwd: project.path });
+            return 'success';
+        }
+        catch {
+            return 'failed';
+        }
     }
 }
 //# sourceMappingURL=CliRegistry.js.map

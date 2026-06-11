@@ -10,13 +10,17 @@ export declare class CliRegistry implements ICliRegistry {
     private readonly _projects;
     constructor(configManager: ConfigManager, scanner: IProjectScanner, loader: IModuleLoader);
     initialize(): Promise<void>;
-    add(project: CliProject): Promise<boolean>;
+    add(project: CliProject): Promise<{
+        added: boolean;
+        globalLinkResult?: 'success' | 'no-package-json' | 'failed';
+    }>;
     remove(key: string): Promise<boolean>;
     get(key: string): CliProject | undefined;
     getAll(): CliProject[];
     has(key: string): boolean;
     reload(key: string): Promise<boolean>;
-    linkToGlobal(project: CliProject): Promise<void>;
-    unlinkFromGlobal(project: CliProject): Promise<void>;
+    hasPackageJson(project: CliProject): Promise<boolean>;
+    linkToGlobal(project: CliProject): Promise<'success' | 'no-package-json' | 'failed'>;
+    unlinkFromGlobal(project: CliProject): Promise<'success' | 'failed'>;
 }
 //# sourceMappingURL=CliRegistry.d.ts.map

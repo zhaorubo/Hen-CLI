@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { BaseCommand } from './BaseCommand.js';
 import * as clack from '@clack/prompts';
+import consoletable from '@xdooi/consoletable';
 export class ListCommand extends BaseCommand {
     get name() { return 'list'; }
     get description() { return '列出所有已注册的 CLI 项目'; }
@@ -20,13 +21,16 @@ export class ListCommand extends BaseCommand {
                     return;
                 }
                 clack.intro('Hen CLI - 项目列表');
-                const table = projects.map(p => {
-                    const sourceTag = p.source === 'git' ? '🔗 Git' : '📁 本地';
-                    const globalTag = p.globalLink ? '🌐' : '';
-                    return `${sourceTag.padEnd(8)} ${globalTag.padEnd(3)} ${p.key.padEnd(20)} ${p.name}${p.version ? ` v${p.version}` : ''}`;
-                }).join('\n');
-                clack.note(table, `共 ${projects.length} 个项目`);
-                clack.outro('完成');
+                const data = projects.map(p => ({
+                    '类型': p.source === 'git' ? 'Git' : '本地',
+                    '全局': p.globalLink ? '是' : '否',
+                    'Key (调用名称)': p.key,
+                    '名称': p.name,
+                    '版本': p.version || '-',
+                    '路径': p.path,
+                }));
+                consoletable.drawTable(data);
+                clack.outro(`共 ${projects.length} 个项目`);
             }
             catch (error) {
                 console.error(`错误: ${error instanceof Error ? error.message : String(error)}`);
