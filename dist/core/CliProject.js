@@ -8,8 +8,9 @@ export class CliProject {
     _description;
     _gitUrl;
     _globalLink;
+    _installed;
     _module;
-    constructor(key, name, projectPath, source, version, description, gitUrl, globalLink = false) {
+    constructor(key, name, projectPath, source, version, description, gitUrl, globalLink = false, installed = false) {
         this._key = key;
         this._name = name;
         this._path = projectPath;
@@ -18,9 +19,10 @@ export class CliProject {
         this._description = description;
         this._gitUrl = gitUrl;
         this._globalLink = globalLink;
+        this._installed = installed;
     }
     static fromSerialized(data) {
-        return new CliProject(data.key, data.name, data.path, data.source, data.version, data.description, data.gitUrl, data.globalLink);
+        return new CliProject(data.key, data.name, data.path, data.source, data.version, data.description, data.gitUrl, data.globalLink, data.installed);
     }
     get key() {
         return this._key;
@@ -45,6 +47,9 @@ export class CliProject {
     }
     get globalLink() {
         return this._globalLink;
+    }
+    get installed() {
+        return this._installed;
     }
     get module() {
         return this._module;
@@ -76,6 +81,7 @@ export class CliProject {
             source: this._source,
             gitUrl: this._gitUrl,
             globalLink: this._globalLink || undefined,
+            installed: this._installed || undefined,
         };
     }
 }

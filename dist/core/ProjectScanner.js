@@ -50,9 +50,13 @@ export class ProjectScanner {
             const content = await fs.readFile(entryPath, 'utf-8');
             const keyMatch = content.match(/cliMeta[\s\S]*?key[:\s]+['"]([^'"]+)['"]/);
             const nameMatch = content.match(/cliMeta[\s\S]*?name[:\s]+['"]([^'"]+)['"]/);
+            const versionMatch = content.match(/cliMeta[\s\S]*?version[:\s]+['"]([^'"]+)['"]/);
+            const descMatch = content.match(/cliMeta[\s\S]*?description[:\s]+['"]([^'"]+)['"]/);
             const key = keyMatch ? keyMatch[1] : path.basename(dir);
             const name = nameMatch ? nameMatch[1] : path.basename(dir);
-            return new CliProject(key, name, dir, source);
+            const version = versionMatch ? versionMatch[1] : undefined;
+            const description = descMatch ? descMatch[1] : undefined;
+            return new CliProject(key, name, dir, source, version, description);
         }
         catch {
             return null;

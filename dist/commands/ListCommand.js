@@ -24,6 +24,7 @@ export class ListCommand extends BaseCommand {
                 const data = projects.map(p => ({
                     '类型': p.source === 'git' ? 'Git' : '本地',
                     '全局': p.globalLink ? '是' : '否',
+                    '已安装': p.installed ? '是' : '否',
                     'Key (调用名称)': p.key,
                     '名称': p.name,
                     '版本': p.version || '-',

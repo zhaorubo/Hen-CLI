@@ -3,14 +3,17 @@ import { BaseCommand } from './BaseCommand.js';
 import { CliProject } from '../core/CliProject.js';
 import os from 'os';
 import path from 'path';
+import fs from 'fs/promises';
 import * as clack from '@clack/prompts';
 export class AddCommand extends BaseCommand {
     _scanner;
     _gitInstaller;
-    constructor(registry, scanner, gitInstaller) {
+    _configManager;
+    constructor(registry, scanner, gitInstaller, configManager) {
         super(registry);
         this._scanner = scanner;
         this._gitInstaller = gitInstaller;
+        this._configManager = configManager;
     }
     get name() { return 'add'; }
     get description() { return '添加 CLI 项目（本地或 Git 远程）'; }
@@ -93,6 +96,23 @@ export class AddCommand extends BaseCommand {
             return ' [警告: 项目无 package.json，未创建全局链接]';
         return ' [警告: 全局链接失败]';
     }
+    async copyDir(src, dest) {
+        await fs.mkdir(dest, { recursive: true });
+        const entries = await fs.readdir(src, { withFileTypes: true });
+        for (const entry of entries) {
+            const srcPath = path.join(src, entry.name);
+            const destPath = path.join(dest, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name === 'node_modules' || entry.name === '.git') {
+                    continue;
+                }
+                await this.copyDir(srcPath, destPath);
+            }
+            else {
+                await fs.copyFile(srcPath, destPath);
+            }
+        }
+    }
     async addLocalProject(dirPath, globalLink = false) {
         const spinner = clack.spinner();
         spinner.start('扫描项目目录...');
@@ -103,11 +123,20 @@ export class AddCommand extends BaseCommand {
                 clack.outro('添加失败');
                 return;
             }
-            spinner.stop('扫描完成');
-            let added = 0;
+            spinner.message('添加项目中...');
+            const projectsDir = this._configManager.projectsDir;
+            await fs.mkdir(projectsDir, { recursive: true });
+            const copiedProjects = [];
             for (const project of projects) {
-                const cliProject = new CliProject(project.key, project.name, project.path, project.source, project.version, project.description, project.gitUrl, globalLink);
-                const result = await this._registry.add(cliProject);
+                const destPath = path.join(projectsDir, project.key);
+                await this.copyDir(project.path, destPath);
+                const copiedProject = new CliProject(project.key, project.name, destPath, 'local', project.version, project.description, project.gitUrl, globalLink);
+                copiedProjects.push(copiedProject);
+            }
+            spinner.stop();
+            let added = 0;
+            for (const project of copiedProjects) {
+                const result = await this._registry.add(project);
                 if (result.added) {
                     const suffix = this.getGlobalLinkSuffix(globalLink, result.globalLinkResult);
                     clack.log.success(`已添加: ${project.name} (${project.key})${suffix}`);
@@ -140,8 +169,19 @@ export class AddCommand extends BaseCommand {
                 clack.outro('添加失败');
                 return;
             }
+            spinner.message('复制项目到 .hen/projects...');
+            const projectsDir = this._configManager.projectsDir;
+            await fs.mkdir(projectsDir, { recursive: true });
+            const copiedProjects = [];
             for (const project of projects) {
-                const result = await this._registry.add(new CliProject(project.key, project.name, project.path, 'git', project.version, project.description, url, globalLink));
+                const destPath = path.join(projectsDir, project.key);
+                await this.copyDir(project.path, destPath);
+                const copiedProject = new CliProject(project.key, project.name, destPath, 'git', project.version, project.description, url, globalLink);
+                copiedProjects.push(copiedProject);
+            }
+            spinner.stop('复制完成');
+            for (const project of copiedProjects) {
+                const result = await this._registry.add(project);
                 if (result.added) {
                     const suffix = this.getGlobalLinkSuffix(globalLink, result.globalLinkResult);
                     clack.log.success(`已添加: ${project.name} (${project.key})${suffix}`);
@@ -150,7 +190,6 @@ export class AddCommand extends BaseCommand {
                     clack.log.warn(`已存在: ${project.name} (${project.key})`);
                 }
             }
-            spinner.stop('克隆完成');
             clack.outro(`成功从 Git 添加 ${projects.length} 个项目`);
         }
         catch (error) {

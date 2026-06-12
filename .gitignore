@@ -1,2 +1,4 @@
 .trae/
 node_modules/
+dist/
+*.log

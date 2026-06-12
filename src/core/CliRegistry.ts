@@ -7,6 +7,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import * as clack from '@clack/prompts';
 
 const execAsync = promisify(exec);
 
@@ -47,6 +48,32 @@ export class CliRegistry implements ICliRegistry {
       }
     }
 
+    // Load projects from projects dir
+    try {
+      const projectsDir = this._configManager.projectsDir;
+      const projectsFromDir = await this._scanner.scanDirectory(projectsDir);
+      for (const project of projectsFromDir) {
+        if (!this._projects.has(project.key)) {
+          // Check installed status for projects
+          const installed = await this.isInstalled(project);
+          const projectWithInstalled = new CliProject(
+            project.key,
+            project.name,
+            project.path,
+            project.source,
+            project.version,
+            project.description,
+            project.gitUrl,
+            project.globalLink,
+            installed
+          );
+          this._projects.set(project.key, projectWithInstalled);
+        }
+      }
+    } catch {
+      // Projects dir may not exist yet
+    }
+
     // Load modules for all projects
     for (const project of this._projects.values()) {
       try {
@@ -54,6 +81,26 @@ export class CliRegistry implements ICliRegistry {
       } catch {
         // Some projects may not have valid modules, skip them
       }
+    }
+  }
+
+  private async isInstalled(project: CliProject): Promise<boolean> {
+    try {
+      // Try to get the actual package name from package.json
+      let pkgName = project.name;
+      try {
+        const pkgPath = path.join(project.path, 'package.json');
+        const content = await fs.readFile(pkgPath, 'utf-8');
+        const pkg = JSON.parse(content) as { name?: string };
+        if (pkg.name) pkgName = pkg.name;
+      } catch {
+        // Fall back to project.name
+      }
+
+      const { stdout } = await execAsync(`npm list -g --depth=0 ${pkgName}`);
+      return stdout.includes(pkgName);
+    } catch {
+      return false;
     }
   }
 
@@ -132,10 +179,24 @@ export class CliRegistry implements ICliRegistry {
       return 'no-package-json';
     }
 
+    const spinner = clack.spinner();
+    spinner.start(`正在编译项目 ${project.name}...`);
     try {
+      // Install dependencies first
+      await execAsync('npm install', { cwd: project.path });
+      // Build if there's a build script
+      try {
+        await execAsync('npm run build', { cwd: project.path });
+      } catch {
+        // No build script or build failed, continue anyway
+      }
+      // Link globally
       await execAsync('npm link', { cwd: project.path });
+      spinner.stop();
       return 'success';
     } catch {
+      spinner.stop();
+      clack.outro('编译项目失败');
       return 'failed';
     }
   }

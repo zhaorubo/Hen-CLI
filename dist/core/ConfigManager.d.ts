@@ -4,6 +4,7 @@ export declare class ConfigManager {
     private _registry;
     constructor(configPath?: string);
     get scanDirs(): readonly string[];
+    get projectsDir(): string;
     get projects(): readonly SerializedProject[];
     get aiConfig(): AiConfig;
     init(): Promise<void>;

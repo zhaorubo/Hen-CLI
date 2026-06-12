@@ -11,6 +11,7 @@ const DEFAULT_AI_CONFIG = {
 const DEFAULT_REGISTRY = {
     projects: [],
     scanDirs: [],
+    projectsDir: path.join(os.homedir(), '.hen', 'projects'),
     ai: DEFAULT_AI_CONFIG,
 };
 export class ConfigManager {
@@ -22,6 +23,9 @@ export class ConfigManager {
     }
     get scanDirs() {
         return this._registry.scanDirs;
+    }
+    get projectsDir() {
+        return this._registry.projectsDir || DEFAULT_REGISTRY.projectsDir;
     }
     get projects() {
         return this._registry.projects;
@@ -36,6 +40,11 @@ export class ConfigManager {
             // Ensure ai config exists
             if (!this._registry.ai) {
                 this._registry.ai = { ...DEFAULT_AI_CONFIG };
+                await this.save();
+            }
+            // Ensure projectsDir exists
+            if (!this._registry.projectsDir) {
+                this._registry.projectsDir = DEFAULT_REGISTRY.projectsDir;
                 await this.save();
             }
         }
@@ -53,10 +62,16 @@ export class ConfigManager {
     async addProject(project) {
         this._registry.projects = this._registry.projects.filter(p => p.key !== project.key);
         this._registry.projects.push(project);
+        project.installed = true;
         await this.save();
     }
     async removeProject(key) {
-        this._registry.projects = this._registry.projects.filter(p => p.key !== key);
+        this._registry.projects = this._registry.projects.filter(p => {
+            if (p.key === key) {
+                p.installed = false;
+            }
+            return p.key !== key;
+        });
         await this.save();
     }
     async updateProject(project) {

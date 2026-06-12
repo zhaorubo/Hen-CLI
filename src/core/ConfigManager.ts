@@ -14,6 +14,7 @@ const DEFAULT_AI_CONFIG: AiConfig = {
 const DEFAULT_REGISTRY: RegistryData = {
   projects: [],
   scanDirs: [],
+  projectsDir: path.join(os.homedir(), '.hen', 'projects'),
   ai: DEFAULT_AI_CONFIG,
 };
 
@@ -28,6 +29,10 @@ export class ConfigManager {
 
   get scanDirs(): readonly string[] {
     return this._registry.scanDirs;
+  }
+
+  get projectsDir(): string {
+    return this._registry.projectsDir || DEFAULT_REGISTRY.projectsDir;
   }
 
   get projects(): readonly SerializedProject[] {
@@ -47,6 +52,11 @@ export class ConfigManager {
         this._registry.ai = { ...DEFAULT_AI_CONFIG };
         await this.save();
       }
+      // Ensure projectsDir exists
+      if (!this._registry.projectsDir) {
+        this._registry.projectsDir = DEFAULT_REGISTRY.projectsDir;
+        await this.save();
+      }
     } catch {
       await this.save();
     }
@@ -63,11 +73,17 @@ export class ConfigManager {
   async addProject(project: SerializedProject): Promise<void> {
     this._registry.projects = this._registry.projects.filter(p => p.key !== project.key);
     this._registry.projects.push(project);
+    project.installed = true;
     await this.save();
   }
 
   async removeProject(key: string): Promise<void> {
-    this._registry.projects = this._registry.projects.filter(p => p.key !== key);
+    this._registry.projects = this._registry.projects.filter(p => {
+      if (p.key === key) {
+        p.installed = false;
+      }
+      return p.key !== key;
+    });
     await this.save();
   }
 

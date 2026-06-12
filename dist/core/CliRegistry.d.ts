@@ -10,6 +10,7 @@ export declare class CliRegistry implements ICliRegistry {
     private readonly _projects;
     constructor(configManager: ConfigManager, scanner: IProjectScanner, loader: IModuleLoader);
     initialize(): Promise<void>;
+    private isInstalled;
     add(project: CliProject): Promise<{
         added: boolean;
         globalLinkResult?: 'success' | 'no-package-json' | 'failed';

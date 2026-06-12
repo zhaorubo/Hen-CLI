@@ -8,6 +8,7 @@ export interface CliMetaInfo {
 export interface RegistryData {
   projects: SerializedProject[];
   scanDirs: string[];
+  projectsDir: string;
   ai: AiConfig;
 }
 
@@ -20,6 +21,7 @@ export interface SerializedProject {
   source: 'local' | 'git';
   gitUrl?: string;
   globalLink?: boolean;
+  installed?: boolean;
 }
 
 export type ProjectSource = 'local' | 'git';

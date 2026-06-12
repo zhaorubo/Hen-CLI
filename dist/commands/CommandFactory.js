@@ -6,8 +6,8 @@ import { AiCommand } from './AiCommand.js';
 export class CommandFactory {
     static createAllCommands(registry, scanner, loader, configManager, gitInstaller, aiService) {
         return [
-            new AddCommand(registry, scanner, gitInstaller),
-            new RemoveCommand(registry),
+            new AddCommand(registry, scanner, gitInstaller, configManager),
+            new RemoveCommand(registry, configManager),
             new ListCommand(registry),
             new ReloadCommand(registry),
             new AiCommand(registry, aiService, configManager),
